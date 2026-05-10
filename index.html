@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    
+    <title id="siteTitleTag">مركز دعم طلة - Tallah Support</title>
+    <meta name="description" content="نظام الإبلاغ عن المشكلات الفنية لبراند طلة - نحن هنا لخدمتك">
+    <meta property="og:title" content="Tallah Support System">
+    <meta property="og:description" content="أبلغ عن مشكلتك وسيقوم فريقنا بالرد عليك فوراً">
+    <meta property="og:image" id="metaImage" content="رابط_صورة_المعاينة">
+    
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;700;900&display=swap" rel="stylesheet">
+    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
+
+    <style>
+        :root { 
+            --bg: #0b0b0f; 
+            --card: rgba(255, 255, 255, 0.05); 
+            --accent: #7000ff; 
+            --neon: #00f2ff;
+            --text: #ffffff;
+        }
+        *{margin:0;padding:0;box-sizing:border-box;font-family:'Cairo',sans-serif;}
+        body{background:var(--bg); color:var(--text); overflow-x: hidden;}
+        
+        /* تأثيرات خلفية */
+        body::before {
+            content: ''; position: fixed; top: -10%; left: -10%; width: 40%; height: 40%;
+            background: radial-gradient(circle, rgba(112,0,255,0.15) 0%, transparent 70%); z-index: -1;
+        }
+
+        header{padding:40px 20px; text-align:center; background: rgba(255,255,255,0.02); border-bottom: 1px solid rgba(255,255,255,0.1); backdrop-filter: blur(10px);}
+        .logo-box{display:flex; align-items:center; justify-content:center; gap:15px;}
+        #siteLogoImg{width:60px; height:60px; border-radius:15px; border: 2px solid var(--neon); box-shadow: 0 0 15px var(--neon); display:none;}
+        
+        .container{width:95%; max-width:800px; margin:40px auto;}
+        .glass-card{
+            background: var(--card); backdrop-filter: blur(15px);
+            border: 1px solid rgba(255,255,255,0.1); border-radius: 30px;
+            padding: 30px; margin-bottom: 25px; transition: 0.4s;
+        }
+        
+        input, textarea, select, button {
+            width:100%; padding:18px; border-radius:15px; border:1px solid rgba(255,255,255,0.1);
+            background: rgba(0,0,0,0.3); color:#fff; margin-top:15px; font-size:16px;
+        }
+        button{
+            background: linear-gradient(45deg, var(--accent), var(--neon));
+            border:none; font-weight:900; cursor:pointer; text-transform: uppercase; letter-spacing: 1px;
+        }
+        button:hover{ transform: scale(1.02); box-shadow: 0 0 20px rgba(112,0,255,0.4); }
+
+        .issue-card { border-right: 5px solid var(--neon); background: rgba(255,255,255,0.03); padding:20px; border-radius:20px; margin-top:15px; }
+        .status-badge { display:inline-block; padding:5px 15px; border-radius:10px; font-size:12px; margin-bottom:10px; font-weight:bold;}
+        .status-open { background: #ff3e3e; }
+        .status-closed { background: #00ff88; color: #000; }
+        
+        .admin-reply { background: rgba(112,0,255,0.1); padding:15px; border-radius:12px; margin-top:15px; border: 1px dashed var(--accent); }
+        .hidden{display:none;}
+        .preview-img{width:100%; border-radius:15px; margin-top:15px; border: 1px solid rgba(255,255,255,0.1);}
+    </style>
+</head>
+<body>
+
+<header>
+    <div class="logo-box">
+        <img id="siteLogoImg" src="" alt="Logo">
+        <h1 id="displaySiteName" style="font-weight:900; letter-spacing:2px;">TALLAH SUPPORT</h1>
+    </div>
+</header>
+
+<div class="container">
+    <div id="loginBox" class="glass-card">
+        <h2 style="text-align:center;">مرحباً بك في مركز المساعدة</h2>
+        <input type="text" id="loginInput" placeholder="أدخل اسمك أو كود الإدارة">
+        <button onclick="handleLogin()">دخول النظام</button>
+    </div>
+
+    <div id="adminPage" class="hidden">
+        <div class="glass-card">
+            <h3>إعدادات المنصة</h3>
+            <input type="text" id="newSiteName" placeholder="تغيير اسم المنصة">
+            <input type="file" id="siteLogoFile">
+            <button onclick="updateBranding()" style="background:#333;">حفظ الهوية الجديدة</button>
+        </div>
+
+        <div class="glass-card">
+            <h3>إدارة المشكلات الواردة</h3>
+            <div id="adminIssuesList"></div>
+        </div>
+        <button onclick="logout()" style="background:none; border:1px solid #ff3e3e; color:#ff3e3e;">تسجيل خروج</button>
+    </div>
+
+    <div id="userPage" class="hidden">
+        <div class="glass-card">
+            <h2>الإبلاغ عن مشكلة</h2>
+            <textarea id="issueText" placeholder="اشرح المشكلة بالتفصيل..."></textarea>
+            <p style="margin-top:15px;">ارفاق صورة للمشكلة (اختياري):</p>
+            <input type="file" id="issueImage" accept="image/*">
+            <button onclick="submitIssue()" id="sendBtn">إرسال البلاغ</button>
+        </div>
+
+        <div id="userStatusBox" class="glass-card">
+            <h3>حالة بلاغاتك</h3>
+            <div id="userIssuesList"></div>
+        </div>
+        <button onclick="logout()" style="background:none; border:1px solid #666; color:#666;">رجوع</button>
+    </div>
+</div>
+
+<script>
+// --- إعدادات Firebase و Cloudinary ---
+const firebaseConfig = {
+    apiKey: "AIzaSyAFUX5NmGFR9MLFzjIa-MkBUOk6OMz5Low",
+    authDomain: "tatpo-c40ce.firebaseapp.com",
+    databaseURL: "https://tatpo-c40ce-default-rtdb.firebaseio.com",
+    projectId: "tatpo-c40ce",
+    storageBucket: "tatpo-c40ce.appspot.com",
+    messagingSenderId: "916778556013",
+    appId: "1:916778556013:web:dfdfd7c79fbdf9f334472"
+};
+
+const CLOUD_NAME = "dfbqpjtvm"; 
+const UPLOAD_PRESET = "tatpo-c40ce";
+
+firebase.initializeApp(firebaseConfig);
+const db = firebase.database();
+const ADMIN_CODE = "2009257";
+
+window.onload = () => {
+    loadBranding();
+    const session = localStorage.getItem('support_session');
+    if(session) {
+        document.getElementById('loginInput').value = session;
+        handleLogin();
+    }
+};
+
+function handleLogin() {
+    const val = document.getElementById("loginInput").value.trim();
+    if(!val) return;
+    localStorage.setItem('support_session', val);
+    
+    if(val === ADMIN_CODE) {
+        showPage('adminPage');
+        loadAdminIssues();
+    } else {
+        showPage('userPage');
+        loadUserIssues(val);
+    }
+}
+
+function showPage(id) {
+    document.getElementById('loginBox').classList.add('hidden');
+    document.getElementById('adminPage').classList.add('hidden');
+    document.getElementById('userPage').classList.add('hidden');
+    document.getElementById(id).classList.remove('hidden');
+}
+
+function logout() {
+    localStorage.removeItem('support_session');
+    location.reload();
+}
+
+async function uploadToCloud(file) {
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('upload_preset', UPLOAD_PRESET);
+    const res = await fetch(`https://api.cloudinary.com/v1_1/${CLOUD_NAME}/image/upload`, {
+        method: 'POST', body: formData
+    });
+    return await res.json();
+}
+
+// إبلاغ عن مشكلة
+async function submitIssue() {
+    const text = document.getElementById('issueText').value;
+    const file = document.getElementById('issueImage').files[0];
+    const user = localStorage.getItem('support_session');
+    const btn = document.getElementById('sendBtn');
+
+    if(!text) return alert("اكتب المشكلة أولاً");
+    btn.innerText = "جاري الإرسال...";
+    
+    let imgUrl = "";
+    if(file) {
+        const d = await uploadToCloud(file);
+        imgUrl = d.secure_url;
+    }
+
+    const newRef = db.ref('problems').push();
+    newRef.set({
+        user: user,
+        problem: text,
+        image: imgUrl,
+        status: "قيد المراجعة",
+        reply: "",
+        time: new Date().toLocaleString('ar-EG')
+    }).then(() => {
+        alert("تم إرسال مشكلتك بنجاح");
+        document.getElementById('issueText').value = "";
+        btn.innerText = "إرسال البلاغ";
+    });
+}
+
+// عرض للمالك
+function loadAdminIssues() {
+    db.ref('problems').on('value', s => {
+        let html = "";
+        s.forEach(child => {
+            const v = child.val();
+            const id = child.key;
+            html += `
+                <div class="issue-card">
+                    <p><b>صاحب المشكلة:</b> ${v.user}</p>
+                    <p style="margin:10px 0;">${v.problem}</p>
+                    ${v.image ? `<img src="${v.image}" class="preview-img">` : ''}
+                    <div class="admin-reply">
+                        <input type="text" id="rep_${id}" placeholder="اكتب ردك هنا..." value="${v.reply || ''}">
+                        <button onclick="sendReply('${id}')" class="btn-sm" style="width:auto; padding:5px 15px; margin-top:10px;">إرسال الرد</button>
+                        <button onclick="closeIssue('${id}')" style="width:auto; padding:5px 15px; background:#00ff88; color:#000;">تم الحل</button>
+                    </div>
+                </div>`;
+        });
+        document.getElementById('adminIssuesList').innerHTML = html || "لا يوجد مشكلات حالياً";
+    });
+}
+
+function sendReply(id) {
+    const txt = document.getElementById('rep_'+id).value;
+    db.ref('problems/' + id).update({ reply: txt });
+    alert("تم الرد");
+}
+
+function closeIssue(id) {
+    db.ref('problems/' + id).update({ status: "تم حل المشكلة" });
+    alert("تم الإغلاق بنجاح");
+}
+
+// عرض للعميل
+function loadUserIssues(user) {
+    db.ref('problems').orderByChild('user').equalTo(user).on('value', s => {
+        let html = "";
+        s.forEach(child => {
+            const v = child.val();
+            const sClass = v.status === "تم حل المشكلة" ? "status-closed" : "status-open";
+            html += `
+                <div class="issue-card">
+                    <div class="status-badge ${sClass}">${v.status}</div>
+                    <p>${v.problem}</p>
+                    ${v.reply ? `<div class="admin-reply"><b>رد الإدارة:</b> ${v.reply}</div>` : ''}
+                </div>`;
+        });
+        document.getElementById('userIssuesList').innerHTML = html || "لم تقم بتقديم أي بلاغات بعد";
+    });
+}
+
+// الهوية
+async function updateBranding() {
+    const name = document.getElementById('newSiteName').value;
+    const file = document.getElementById('siteLogoFile').files[0];
+    let logoUrl = "";
+    if(file) { const d = await uploadToCloud(file); logoUrl = d.secure_url; }
+    const upd = {};
+    if(name) upd.name = name;
+    if(logoUrl) upd.logo = logoUrl;
+    db.ref('support_settings').update(upd);
+}
+
+function loadBranding() {
+    db.ref('support_settings').on('value', s => {
+        const d = s.val();
+        if(d) {
+            if(d.name) {
+                document.getElementById('displaySiteName').innerText = d.name;
+                document.getElementById('siteTitleTag').innerText = d.name;
+            }
+            if(d.logo) {
+                document.getElementById('siteLogoImg').src = d.logo;
+                document.getElementById('siteLogoImg').style.display = "block";
+                document.getElementById('metaImage').content = d.logo;
+            }
+        }
+    });
+}
+</script>
+</body>
+</html>
